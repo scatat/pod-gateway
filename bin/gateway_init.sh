@@ -30,6 +30,17 @@ VXLAN_GATEWAY_IP="${VXLAN_IP_NETWORK}.1"
 ip link add vxlan0 type vxlan id $VXLAN_ID dev eth0 dstport 0 || true
 ip addr add ${VXLAN_GATEWAY_IP}/24 dev vxlan0 || true
 ip link set up dev vxlan0
+if [[ -n "$VPN_INTERFACE_MTU" ]]; then
+  ETH0_INTERFACE_MTU=$(cat /sys/class/net/eth0/mtu)
+  VXLAN0_INTERFACE_MAX_MTU=$((ETH0_INTERFACE_MTU-50))
+  #Ex: if tun0 = 1500 and max mtu is 1450
+  if [ ${VPN_INTERFACE_MTU} >= ${VXLAN0_INTERFACE_MAX_MTU} ];then
+    ip link set mtu "${VXLAN0_INTERFACE_MAX_MTU}" dev vxlan0
+  #Ex: if wg0 = 1420 and max mtu is 1450
+  else
+    ip link set mtu "${VPN_INTERFACE_MTU}" dev vxlan0
+  fi
+fi
 
 # check if rule already exists (retry)
 if ! ip rule | grep -q "from all lookup main suppress_prefixlength 0"; then

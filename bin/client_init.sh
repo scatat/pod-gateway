@@ -57,6 +57,17 @@ ping -c "${CONNECTION_RETRY_COUNT}" "$GATEWAY_IP"
 ip link add vxlan0 type vxlan id "$VXLAN_ID" dev eth0 dstport 0 || true
 bridge fdb append to 00:00:00:00:00:00 dst "$GATEWAY_IP" dev vxlan0
 ip link set up dev vxlan0
+if [[ -n "$VPN_INTERFACE_MTU" ]]; then
+  ETH0_INTERFACE_MTU=$(cat /sys/class/net/eth0/mtu)
+  VXLAN0_INTERFACE_MAX_MTU=$((ETH0_INTERFACE_MTU-50))
+  #Ex: if tun0 = 1500 and max mtu is 1450
+  if [ ${VPN_INTERFACE_MTU} >= ${VXLAN0_INTERFACE_MAX_MTU} ];then
+    ip link set mtu "${VXLAN0_INTERFACE_MAX_MTU}" dev vxlan0
+  #Ex: if wg0 = 1420 and max mtu is 1450
+  else
+    ip link set mtu "${VPN_INTERFACE_MTU}" dev vxlan0
+  fi
+fi
 
 cat << EOF > /etc/dhclient.conf
 backoff-cutoff 2;

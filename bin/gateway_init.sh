@@ -38,7 +38,13 @@ if ! ip rule | grep -q "from all lookup main suppress_prefixlength 0"; then
 fi
 
 # Enable outbound NAT
-iptables -t nat -A POSTROUTING -j MASQUERADE
+if [[ -n "$SNAT_IP" ]]; then
+  echo "Enable SNAT"
+  iptables -t nat -A POSTROUTING -o "$VPN_INTERFACE" -j SNAT --to "$SNAT_IP"
+else
+  echo "Enable Masquerading"
+  iptables -t nat -A POSTROUTING -j MASQUERADE
+fi
 
 if [[ -n "$VPN_INTERFACE" ]]; then
   # Open inbound NAT ports in nat.conf

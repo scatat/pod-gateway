@@ -45,3 +45,6 @@ GATEWAY_ENABLE_DNSSEC=true
 
 # If you use nftables for iptables you need to set this to yes
 IPTABLES_NFT=no
+
+# Set to WAN/VPN IP to enable SNAT instead of Masquerading
+SNAT_IP=""

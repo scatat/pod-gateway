@@ -1,11 +1,14 @@
 #!/bin/bash
 set -e
 
+# We use CONFIG env var to as the actual config
+config=$CONFIG
+
 # Load main settings
 cat /default_config/settings.sh
 . /default_config/settings.sh
-cat /config/settings.sh
-. /config/settings.sh
+cat /${config}/settings.sh
+. /${config}/settings.sh
 
 VXLAN_GATEWAY_IP="${VXLAN_IP_NETWORK}.1"
 

@@ -2,11 +2,14 @@
 
 set -ex
 
+# We use CONFIG env var to as the actual config
+config=$CONFIG
+
 # Load main settings
 cat /default_config/settings.sh
 . /default_config/settings.sh
-cat /config/settings.sh
-. /config/settings.sh
+cat /${config}/settings.sh
+. /${config}/settings.sh
 
 # Make a copy of the original resolv.conf (so we can get the K8S DNS in case of a container reboot)
 if [ ! -f /etc/resolv.conf.org ]; then

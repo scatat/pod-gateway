@@ -2,11 +2,14 @@
 
 set -ex
 
+# We use CONFIG env var to as the actual config
+config=$CONFIG
+
 # Load main settings
 cat /default_config/settings.sh
 . /default_config/settings.sh
-cat /config/settings.sh
-. /config/settings.sh
+cat /${config}/settings.sh
+. /${config}/settings.sh
 
 # in re-entry we need to remove the vxlan
 # on first entry set a routing rule to the k8s DNS server

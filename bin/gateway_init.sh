@@ -2,11 +2,14 @@
 
 set -ex
 
+# We use CONFIG env var to as the actual config
+config=$CONFIG
+
 # Load main settings
 cat /default_config/settings.sh
 . /default_config/settings.sh
-cat /config/settings.sh
-. /config/settings.sh
+cat /${config}/settings.sh
+. /${config}/settings.sh
 
 if [ "${IPTABLES_NFT:-no}" = "yes" ];then
     # We cannot just call iptables-translate as it'll just print new syntax without applying

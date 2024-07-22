@@ -2,8 +2,8 @@
 
 set -ex
 
-# We use CONFIG env var to as the actual config
-config=$CONFIG
+# We need to hardcode the config dir variable
+config="/pod-gw-config"
 
 # Load main settings
 cat /default_config/settings.sh

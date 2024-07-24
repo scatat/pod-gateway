@@ -58,7 +58,7 @@ ip addr
 ip route
 
 # Check we can connect to the GATEWAY IP
-ping -c "${CONNECTION_RETRY_COUNT}" "$GATEWAY_IP"
+#ping -c "${CONNECTION_RETRY_COUNT}" "$GATEWAY_IP"
 
 # Create tunnel NIC
 ip link add vxlan0 type vxlan id "$VXLAN_ID" group 239.1.1.1 dev eth0  dstport 0 || true

@@ -95,6 +95,9 @@ if [[ -n "$VPN_INTERFACE" ]]; then
   # Reject other traffic"
   iptables -A FORWARD -i "$VPN_INTERFACE" -j REJECT
 
+  # Important: we need to allow DHCP requests
+  iptables -I INPUT 1 -p udp --dport 67 -j ACCEPT
+
   if [[ $VPN_BLOCK_OTHER_TRAFFIC == true ]] ; then
     # Do not forward any traffic that does not leave through ${VPN_INTERFACE}
     # The openvpn will also add drop rules but this is to ensure we block even if VPN is not connecting

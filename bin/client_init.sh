@@ -76,30 +76,24 @@ if [[ -n "$VPN_INTERFACE_MTU" ]]; then
   fi
 fi
 
-# Create dhcpcd configuration for vxlan0
-cat << EOF > /etc/dhcpcd.conf
-# Global settings
-timeout 30
-noarp
-# Allow 10 retries (similar to original dhclient retry 10)
-retries 10
-# Backoff settings similar to original
-backoff 2
-initial_interval 1
-select_timeout 0
-
-# vxlan0 interface configuration
-interface vxlan0
-request subnet_mask, broadcast_address, routers
-require subnet_mask, routers
-EOF
-
 # Configure IP and default GW though the gateway docker
 if [[ -z "$NAT_ENTRY" ]]; then
   echo "Get dynamic IP"
-  # Run dhcpcd with verbose output and wait for completion
-  # Remove the -1 flag to allow retries according to config
-  dhcpcd -d -w vxlan0
+
+  # Clean any existing leases or state to ensure fresh start
+  [ -f /var/run/udhcpc.vxlan0.pid ] && kill $(cat /var/run/udhcpc.vxlan0.pid) 2>/dev/null || true
+  rm -f /var/run/udhcpc.vxlan0.pid
+
+  # Run udhcpc with standard options
+  # -i: interface, -f: foreground, -q: less verbose, -t: retry count
+  echo "Running udhcpc to get IP address for vxlan0"
+  udhcpc -i vxlan0 -f -q -t 5 -p /var/run/udhcpc.vxlan0.pid
+
+  # Verify we got an IP
+  if ! ip addr show dev vxlan0 | grep -q "inet "; then
+    echo "ERROR: Failed to get IP address for vxlan0"
+    exit 1
+  fi
 else
   IP=$(cut -d' ' -f2 <<< "$NAT_ENTRY")
   VXLAN_IP="${VXLAN_IP_NETWORK}.${IP}"

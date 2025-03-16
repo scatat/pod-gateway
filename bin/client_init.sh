@@ -61,7 +61,7 @@ ip route
 #ping -c "${CONNECTION_RETRY_COUNT}" "$GATEWAY_IP"
 
 # Create tunnel NIC
-ip link add vxlan0 type vxlan id "$VXLAN_ID" group 239.1.1.1 dev eth0  dstport 0 || true
+ip link add vxlan0 type vxlan id "$VXLAN_ID" group 239.1.1.1 dev eth0 dstport 0 || true
 bridge fdb append to 00:00:00:00:00:00 dst "$GATEWAY_IP" dev vxlan0
 ip link set up dev vxlan0
 if [[ -n "$VPN_INTERFACE_MTU" ]]; then
@@ -76,30 +76,30 @@ if [[ -n "$VPN_INTERFACE_MTU" ]]; then
   fi
 fi
 
-cat << EOF > /etc/dhclient.conf
-backoff-cutoff 2;
-initial-interval 1;
-reboot 0;
-retry 10;
-select-timeout 0;
-timeout 30;
+# Create dhcpcd configuration for vxlan0
+cat << EOF > /etc/dhcpcd.conf
+# Global settings
+timeout 30
+noarp
+# Allow 10 retries (similar to original dhclient retry 10)
+retries 10
+# Backoff settings similar to original
+backoff 2
+initial_interval 1
+select_timeout 0
 
-interface "vxlan0"
- {
-  request subnet-mask,
-          broadcast-address,
-          routers;
-          #domain-name-servers;
-  require routers,
-          subnet-mask;
-          #domain-name-servers;
- }
+# vxlan0 interface configuration
+interface vxlan0
+request subnet_mask, broadcast_address, routers
+require subnet_mask, routers
 EOF
 
 # Configure IP and default GW though the gateway docker
 if [[ -z "$NAT_ENTRY" ]]; then
   echo "Get dynamic IP"
-  dhclient -v -cf /etc/dhclient.conf vxlan0
+  # Run dhcpcd with verbose output and wait for completion
+  # Remove the -1 flag to allow retries according to config
+  dhcpcd -d -w vxlan0
 else
   IP=$(cut -d' ' -f2 <<< "$NAT_ENTRY")
   VXLAN_IP="${VXLAN_IP_NETWORK}.${IP}"
@@ -112,7 +112,7 @@ fi
 ip addr
 ip route
 
-# Check we can connect to the gateway ussing the vxlan device
+# Check we can connect to the gateway using the vxlan device
 ping -c "${CONNECTION_RETRY_COUNT}" "$VXLAN_GATEWAY_IP"
 
 echo "Gateway ready and reachable"

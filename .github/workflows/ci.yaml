@@ -19,6 +19,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, '[ci-skip]')"
+    outputs:
+      image_digest: ${{ steps.image_info.outputs.digest }}
+      image_full_name: ${{ steps.image_info.outputs.full_image }}
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -88,4 +91,22 @@ jobs:
         cache-to: ${{ steps.prep.outputs.cache_to }}
 
     - name: Image digest
-      run: echo ${{ steps.docker_build.outputs.digest }}
+      id: image_info
+      run: |
+        echo "Image digest: ${{ steps.docker_build.outputs.digest }}"
+        echo "Full image reference: ${REGISTRY_IMAGE}@${{ steps.docker_build.outputs.digest }}"
+        echo "digest=${{ steps.docker_build.outputs.digest }}" >> $GITHUB_OUTPUT
+        echo "full_image=${REGISTRY_IMAGE}@${{ steps.docker_build.outputs.digest }}" >> $GITHUB_OUTPUT
+
+    - name: Create digest file
+      if: github.event_name != 'pull_request' && steps.docker_build.outputs.digest != ''
+      run: |
+        echo "${REGISTRY_IMAGE}@${{ steps.docker_build.outputs.digest }}" > image-digest.txt
+
+    - name: Upload digest artifact
+      if: github.event_name != 'pull_request' && steps.docker_build.outputs.digest != ''
+      uses: actions/upload-artifact@v3
+      with:
+        name: image-digest
+        path: image-digest.txt
+        retention-days: 7

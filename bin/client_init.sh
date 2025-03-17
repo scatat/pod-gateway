@@ -53,7 +53,7 @@ if ! ip link show vxlan0 &>/dev/null; then
     ETH0_INTERFACE_MTU=$(cat /sys/class/net/eth0/mtu)
     VXLAN0_INTERFACE_MAX_MTU=$((ETH0_INTERFACE_MTU-50))
     #Ex: if tun0 = 1500 and max mtu is 1450
-    if [ ${VPN_INTERFACE_MTU} >= ${VXLAN0_INTERFACE_MAX_MTU} ];then
+    if [ ${VPN_INTERFACE_MTU} -ge ${VXLAN0_INTERFACE_MAX_MTU} ]; then
       ip link set mtu "${VXLAN0_INTERFACE_MAX_MTU}" dev vxlan0
     #Ex: if wg0 = 1420 and max mtu is 1450
     else
@@ -97,27 +97,32 @@ if [[ -z "$NAT_ENTRY" ]]; then
 
   # Clean any existing leases or state
   rm -f /var/run/udhcpc.vxlan0.pid
+  rm -f /var/run/dhcp_renew.pid
 
-  # Run udhcpc with foreground (-f) and keep running (-R)
-  echo "Running udhcpc to get IP address for vxlan0"
-  # Start in background but keep running
-  udhcpc -i vxlan0 -f -q -p /var/run/udhcpc.vxlan0.pid -R &
-  DHCP_PID=$!
-
-  # Wait for IP to be assigned (up to 10 seconds)
-  for i in {1..10}; do
-    if ip addr show dev vxlan0 | grep -q "inet "; then
-      echo "Got IP address for vxlan0"
-      break
-    fi
-    sleep 1
-  done
+  # Get initial IP address
+  echo "Running udhcpc to get initial IP address for vxlan0"
+  udhcpc -i vxlan0 -n -q
 
   # Verify we got an IP
   if ! ip addr show dev vxlan0 | grep -q "inet "; then
     echo "ERROR: Failed to get IP address for vxlan0"
     exit 1
   fi
+
+  # Start a background process to handle lease renewals
+  echo "Starting background process to handle DHCP renewals"
+  (
+    while true; do
+      # Sleep for 4 hours (less than the 12h lease time)
+      sleep 14400
+      echo "$(date): Renewing DHCP lease for vxlan0"
+      udhcpc -i vxlan0 -n -q
+    done
+  ) &
+
+  # Save background process PID
+  echo $! > /var/run/dhcp_renew.pid
+  echo "DHCP renewal process started with PID $(cat /var/run/dhcp_renew.pid)"
 else
   IP=$(cut -d' ' -f2 <<< "$NAT_ENTRY")
   VXLAN_IP="${VXLAN_IP_NETWORK}.${IP}"

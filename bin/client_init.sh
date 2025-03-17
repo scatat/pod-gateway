@@ -98,9 +98,20 @@ if [[ -z "$NAT_ENTRY" ]]; then
   # Clean any existing leases or state
   rm -f /var/run/udhcpc.vxlan0.pid
 
-  # Run udhcpc in daemon mode (-b) to automatically handle lease renewals
+  # Run udhcpc with foreground (-f) and keep running (-R)
   echo "Running udhcpc to get IP address for vxlan0"
-  udhcpc -i vxlan0 -b -q -p /var/run/udhcpc.vxlan0.pid
+  # Start in background but keep running
+  udhcpc -i vxlan0 -f -q -p /var/run/udhcpc.vxlan0.pid -R &
+  DHCP_PID=$!
+
+  # Wait for IP to be assigned (up to 10 seconds)
+  for i in {1..10}; do
+    if ip addr show dev vxlan0 | grep -q "inet "; then
+      echo "Got IP address for vxlan0"
+      break
+    fi
+    sleep 1
+  done
 
   # Verify we got an IP
   if ! ip addr show dev vxlan0 | grep -q "inet "; then
